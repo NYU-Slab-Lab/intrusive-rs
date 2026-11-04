@@ -22,30 +22,49 @@ use crate::Adapter;
 // LinkedListOps
 // =============================================================================
 
+flux_rs::defs! {
+    fn model_next<S, P>(s: S) -> Map<P, bool>;
+    fn model_prev<S, P>(s: S) -> Map<P, bool>;
+}
+
 /// Link operations for `LinkedList`.
+// Logical model of the links, as Flux ghost state on the ops object: for each
+// link pointer, whether each link field is `Some`. `Option` is only indexed by
+// `is_some`, so the model cannot say which node a link points to. The trait
+// specs are trusted for every impl (`trusted_impl`).
+#[flux::assoc(fn next_some(s: Self) -> Map<Self::LinkPtr, bool> { model_next(s) })]
+#[flux::assoc(fn prev_some(s: Self) -> Map<Self::LinkPtr, bool> { model_prev(s) })]
 pub unsafe trait LinkedListOps: link_ops::LinkOps {
     /// Returns the "next" link pointer of `ptr`.
     ///
     /// # Safety
     /// An implementation of `next` must not panic.
+    #[flux::trusted_impl]
+    #[flux::spec(fn (&Self[@s], ptr: Self::LinkPtr[@p]) -> Option<Self::LinkPtr>[map_select(<Self as LinkedListOps>::next_some(s), p)])]
     unsafe fn next(&self, ptr: Self::LinkPtr) -> Option<Self::LinkPtr>;
 
     /// Returns the "prev" link pointer of `ptr`.
     ///
     /// # Safety
     /// An implementation of `prev` must not panic.
+    #[flux::trusted_impl]
+    #[flux::spec(fn (&Self[@s], ptr: Self::LinkPtr[@p]) -> Option<Self::LinkPtr>[map_select(<Self as LinkedListOps>::prev_some(s), p)])]
     unsafe fn prev(&self, ptr: Self::LinkPtr) -> Option<Self::LinkPtr>;
 
     /// Sets the "next" link pointer of `ptr`.
     ///
     /// # Safety
     /// An implementation of `set_next` must not panic.
+    #[flux::trusted_impl]
+    #[flux::spec(fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], next: Option<Self::LinkPtr>[@b]) ensures self: Self{s2: <Self as LinkedListOps>::next_some(s2) == map_store(<Self as LinkedListOps>::next_some(s), p, b) && <Self as LinkedListOps>::prev_some(s2) == <Self as LinkedListOps>::prev_some(s)})]
     unsafe fn set_next(&mut self, ptr: Self::LinkPtr, next: Option<Self::LinkPtr>);
 
     /// Sets the "prev" link pointer of `ptr`.
     ///
     /// # Safety
     /// An implementation of `set_prev` must not panic.
+    #[flux::trusted_impl]
+    #[flux::spec(fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], prev: Option<Self::LinkPtr>[@b]) ensures self: Self{s2: <Self as LinkedListOps>::prev_some(s2) == map_store(<Self as LinkedListOps>::prev_some(s), p, b) && <Self as LinkedListOps>::next_some(s2) == <Self as LinkedListOps>::next_some(s)})]
     unsafe fn set_prev(&mut self, ptr: Self::LinkPtr, prev: Option<Self::LinkPtr>);
 }
 
@@ -142,6 +161,8 @@ impl fmt::Debug for Link {
 
 /// Default `LinkOps` implementation for `LinkedList`.
 #[derive(Clone, Copy, Default)]
+#[flux::opaque]
+#[flux::refined_by(ghost: int)]
 pub struct LinkOps;
 
 unsafe impl link_ops::LinkOps for LinkOps {
@@ -382,6 +403,8 @@ mod atomic {
 
     /// Default `AtomicLinkOps` implementation for `LinkedList`.
     #[derive(Clone, Copy, Default)]
+    #[flux::opaque]
+    #[flux::refined_by(ghost: int)]
     pub struct AtomicLinkOps;
 
     unsafe impl link_ops::LinkOps for AtomicLinkOps {
@@ -513,6 +536,7 @@ mod atomic {
 pub use atomic::{AtomicLink, AtomicLinkOps};
 
 #[inline]
+#[flux::spec(fn (link_ops: &strg T[@s], ptr: T::LinkPtr[@p], prev: Option<T::LinkPtr>[@hp], next: Option<T::LinkPtr>[@hn]) ensures link_ops: T{s2: map_select(<T as LinkedListOps>::next_some(s2), p) == hn && map_select(<T as LinkedListOps>::prev_some(s2), p) == hp})]
 unsafe fn link_between<T: LinkedListOps>(
     link_ops: &mut T,
     ptr: T::LinkPtr,
@@ -530,11 +554,13 @@ unsafe fn link_between<T: LinkedListOps>(
 }
 
 #[inline]
+#[flux::spec(fn (link_ops: &strg T[@s], ptr: T::LinkPtr[@p], prev: T::LinkPtr[@q]) ensures link_ops: T{s2: map_select(<T as LinkedListOps>::prev_some(s2), p) && map_select(<T as LinkedListOps>::next_some(s2), p) == map_select(<T as LinkedListOps>::next_some(s), q)})]
 unsafe fn link_after<T: LinkedListOps>(link_ops: &mut T, ptr: T::LinkPtr, prev: T::LinkPtr) {
     link_between(link_ops, ptr, Some(prev), link_ops.next(prev));
 }
 
 #[inline]
+#[flux::spec(fn (link_ops: &strg T[@s], ptr: T::LinkPtr[@p], next: T::LinkPtr[@q]) ensures link_ops: T{s2: map_select(<T as LinkedListOps>::next_some(s2), p) && map_select(<T as LinkedListOps>::prev_some(s2), p) == map_select(<T as LinkedListOps>::prev_some(s), q)})]
 unsafe fn link_before<T: LinkedListOps>(link_ops: &mut T, ptr: T::LinkPtr, next: T::LinkPtr) {
     link_between(link_ops, ptr, link_ops.prev(next), Some(next));
 }
@@ -957,6 +983,7 @@ where
     /// If the cursor is pointing at the null object then the new elements are
     /// inserted at the start of the `LinkedList`.
     #[inline]
+    #[flux::trusted]
     pub fn splice_after(&mut self, mut list: LinkedList<A>) {
         if !list.is_empty() {
             unsafe {
@@ -985,6 +1012,7 @@ where
     /// If the cursor is pointing at the null object then the new elements are
     /// inserted at the end of the `LinkedList`.
     #[inline]
+    #[flux::trusted]
     pub fn splice_before(&mut self, mut list: LinkedList<A>) {
         if !list.is_empty() {
             unsafe {
@@ -1264,6 +1292,7 @@ where
     ///
     /// `ptr` must be a pointer to an object that is part of this list.
     #[inline]
+    #[flux::spec(fn (&Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value) -> Cursor<A>)]
     pub unsafe fn cursor_from_ptr(
         &self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1280,6 +1309,7 @@ where
     ///
     /// `ptr` must be a pointer to an object that is part of this list.
     #[inline]
+    #[flux::spec(fn (&mut Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value) -> CursorMut<A>)]
     pub unsafe fn cursor_mut_from_ptr(
         &mut self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1296,6 +1326,7 @@ where
     ///
     /// `ptr` must be a pointer to an object that is part of this list.
     #[inline]
+    #[flux::spec(fn (Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value) -> CursorOwning<A>)]
     pub unsafe fn cursor_owning_from_ptr(
         self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1546,6 +1577,8 @@ where
     type Item = &'a <A::PointerOps as PointerOps>::Value;
 
     #[inline]
+    #[flux::trusted_impl]
+    #[flux::spec(fn (self: &strg Self) -> Option<&<A::PointerOps as PointerOps>::Value> ensures self: Self)]
     fn next(&mut self) -> Option<&'a <A::PointerOps as PointerOps>::Value> {
         let head = self.head?;
 
@@ -1607,6 +1640,8 @@ where
     type Item = <A::PointerOps as PointerOps>::Pointer;
 
     #[inline]
+    #[flux::trusted_impl]
+    #[flux::spec(fn (self: &strg Self) -> Option<<A::PointerOps as PointerOps>::Pointer> ensures self: Self)]
     fn next(&mut self) -> Option<<A::PointerOps as PointerOps>::Pointer> {
         self.list.pop_front()
     }

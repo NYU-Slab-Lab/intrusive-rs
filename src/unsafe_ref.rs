@@ -21,7 +21,10 @@ use core::ptr::NonNull;
 /// You must guarantee that an object managed by an `UnsafeRef` is not
 /// moved, dropped or accessed through a mutable reference as long as at least
 /// one `UnsafeRef` is pointing to it.
+#[flux::refined_by(base: int, addr: int, size: int)]
+#[flux::invariant(addr != 0)]
 pub struct UnsafeRef<T: ?Sized> {
+    #[flux::field(NonNull<T>[base, addr, size])]
     ptr: NonNull<T>,
 }
 
@@ -32,6 +35,7 @@ impl<T: ?Sized> UnsafeRef<T> {
     ///
     /// You must ensure that the `UnsafeRef` guarantees are upheld.
     #[inline]
+    #[flux::spec(fn (val: *const[@p] T) -> UnsafeRef<T>[p.base, p.addr, p.size] requires p.addr != 0)]
     pub unsafe fn from_raw(val: *const T) -> UnsafeRef<T> {
         UnsafeRef {
             ptr: NonNull::new_unchecked(val as *mut _),
@@ -40,6 +44,7 @@ impl<T: ?Sized> UnsafeRef<T> {
 
     /// Converts an `UnsafeRef` into a raw pointer
     #[inline]
+    #[flux::spec(fn (ptr: UnsafeRef<T>[@b, @a, @s]) -> *mut[b, a, s] T)]
     pub fn into_raw(ptr: Self) -> *mut T {
         ptr.ptr.as_ptr()
     }
@@ -69,6 +74,7 @@ impl<T: ?Sized> UnsafeRef<T> {
 
 impl<T: ?Sized> Clone for UnsafeRef<T> {
     #[inline]
+    #[flux::spec(fn (&UnsafeRef<T>[@b, @a, @s]) -> UnsafeRef<T>[b, a, s])]
     fn clone(&self) -> UnsafeRef<T> {
         UnsafeRef { ptr: self.ptr }
     }

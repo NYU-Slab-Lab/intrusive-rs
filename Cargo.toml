@@ -21,3 +21,10 @@ default = ["alloc"]
 rand = "0.8.4"
 typed-arena = "2.0.1"
 rand_xorshift = "0.3.0"
+
+[dependencies]
+flux-rs = { git = "https://github.com/flux-rs/flux.git" }
+flux-core = { git = "https://github.com/flux-rs/flux.git" }
+
+[package.metadata.flux]
+enabled = true

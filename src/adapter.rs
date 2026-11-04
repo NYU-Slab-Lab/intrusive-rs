@@ -52,6 +52,7 @@ pub unsafe trait Adapter {
     /// # Safety
     ///
     /// `link` must be a valid pointer previously returned by `get_link`.
+    #[flux::spec(fn (&Self, link: <Self::LinkOps as LinkOps>::LinkPtr) -> *const{p: p.addr != 0} <Self::PointerOps as PointerOps>::Value)]
     unsafe fn get_value(
         &self,
         link: <Self::LinkOps as LinkOps>::LinkPtr,
@@ -62,6 +63,7 @@ pub unsafe trait Adapter {
     /// # Safety
     ///
     /// `value` must be a valid pointer.
+    #[flux::spec(fn (&Self, value: *const{p: p.addr != 0} <Self::PointerOps as PointerOps>::Value) -> <Self::LinkOps as LinkOps>::LinkPtr)]
     unsafe fn get_link(
         &self,
         value: *const <Self::PointerOps as PointerOps>::Value,

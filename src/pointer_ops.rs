@@ -37,9 +37,11 @@ pub unsafe trait PointerOps {
     /// The raw pointer must have been previously returned by `into_raw`.
     ///
     /// An implementation of `from_raw` must not panic.
+    #[flux::spec(fn (&Self, value: *const{p: p.addr != 0} Self::Value) -> Self::Pointer)]
     unsafe fn from_raw(&self, value: *const Self::Value) -> Self::Pointer;
 
     /// Consumes the owned pointer and returns a raw pointer to the owned object.
+    #[flux::spec(fn (&Self, ptr: Self::Pointer) -> *const{p: p.addr != 0} Self::Value)]
     fn into_raw(&self, ptr: Self::Pointer) -> *const Self::Value;
 }
 
@@ -80,6 +82,7 @@ unsafe impl<'a, T: ?Sized> PointerOps for DefaultPointerOps<&'a T> {
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: &T) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: &'a T) -> *const T {
         ptr
     }
@@ -95,6 +98,7 @@ unsafe impl<'a, T: ?Sized> PointerOps for DefaultPointerOps<Pin<&'a T>> {
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Pin<&T>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Pin<&'a T>) -> *const T {
         unsafe { Pin::into_inner_unchecked(ptr) as *const T }
     }
@@ -105,11 +109,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<UnsafeRef<T>> {
     type Pointer = UnsafeRef<T>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const[@p] T) -> UnsafeRef<T>[p.base, p.addr, p.size] requires p.addr != 0)]
     unsafe fn from_raw(&self, raw: *const T) -> UnsafeRef<T> {
         UnsafeRef::from_raw(raw as *mut T)
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: UnsafeRef<T>[@b, @a, @s]) -> *const{p: p.base == b && p.addr == a && p.size == s && p.addr != 0} T)]
     fn into_raw(&self, ptr: UnsafeRef<T>) -> *const T {
         UnsafeRef::into_raw(ptr) as *const T
     }
@@ -120,11 +126,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Pin<UnsafeRef<T>>> {
     type Pointer = Pin<UnsafeRef<T>>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const{p: p.addr != 0} T) -> Pin<UnsafeRef<T>>)]
     unsafe fn from_raw(&self, raw: *const T) -> Pin<UnsafeRef<T>> {
         Pin::new_unchecked(UnsafeRef::from_raw(raw as *mut T))
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Pin<UnsafeRef<T>>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Pin<UnsafeRef<T>>) -> *const T {
         UnsafeRef::into_raw(unsafe { Pin::into_inner_unchecked(ptr) }) as *const T
     }
@@ -136,11 +144,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Box<T>> {
     type Pointer = Box<T>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const{p: p.addr != 0} T) -> Box<T>)]
     unsafe fn from_raw(&self, raw: *const T) -> Box<T> {
         Box::from_raw(raw as *mut T)
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Box<T>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Box<T>) -> *const T {
         Box::into_raw(ptr) as *const T
     }
@@ -152,11 +162,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Pin<Box<T>>> {
     type Pointer = Pin<Box<T>>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const{p: p.addr != 0} T) -> Pin<Box<T>>)]
     unsafe fn from_raw(&self, raw: *const T) -> Pin<Box<T>> {
         Pin::new_unchecked(Box::from_raw(raw as *mut T))
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Pin<Box<T>>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Pin<Box<T>>) -> *const T {
         Box::into_raw(unsafe { Pin::into_inner_unchecked(ptr) }) as *const T
     }
@@ -168,11 +180,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Rc<T>> {
     type Pointer = Rc<T>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const{p: p.addr != 0} T) -> Rc<T>)]
     unsafe fn from_raw(&self, raw: *const T) -> Rc<T> {
         Rc::from_raw(raw)
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Rc<T>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Rc<T>) -> *const T {
         Rc::into_raw(ptr)
     }
@@ -184,11 +198,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Pin<Rc<T>>> {
     type Pointer = Pin<Rc<T>>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const{p: p.addr != 0} T) -> Pin<Rc<T>>)]
     unsafe fn from_raw(&self, raw: *const T) -> Pin<Rc<T>> {
         Pin::new_unchecked(Rc::from_raw(raw))
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Pin<Rc<T>>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Pin<Rc<T>>) -> *const T {
         Rc::into_raw(unsafe { Pin::into_inner_unchecked(ptr) })
     }
@@ -200,11 +216,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Arc<T>> {
     type Pointer = Arc<T>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const{p: p.addr != 0} T) -> Arc<T>)]
     unsafe fn from_raw(&self, raw: *const T) -> Arc<T> {
         Arc::from_raw(raw)
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Arc<T>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Arc<T>) -> *const T {
         Arc::into_raw(ptr)
     }
@@ -216,11 +234,13 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Pin<Arc<T>>> {
     type Pointer = Pin<Arc<T>>;
 
     #[inline]
+    #[flux::spec(fn (&Self, raw: *const{p: p.addr != 0} T) -> Pin<Arc<T>>)]
     unsafe fn from_raw(&self, raw: *const T) -> Pin<Arc<T>> {
         Pin::new_unchecked(Arc::from_raw(raw))
     }
 
     #[inline]
+    #[flux::spec(fn (&Self, ptr: Pin<Arc<T>>) -> *const{p: p.addr != 0} T)]
     fn into_raw(&self, ptr: Pin<Arc<T>>) -> *const T {
         Arc::into_raw(unsafe { Pin::into_inner_unchecked(ptr) })
     }
@@ -231,6 +251,7 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<Pin<Arc<T>>> {
 /// This method is only safe to call if the raw pointer is known to be
 /// managed by the provided `PointerOps` type.
 #[inline]
+#[flux::spec(fn (pointer_ops: &T, ptr: *const{p: p.addr != 0} T::Value) -> T::Pointer)]
 pub(crate) unsafe fn clone_pointer_from_raw<T: PointerOps>(
     pointer_ops: &T,
     ptr: *const T::Value,
@@ -248,6 +269,7 @@ where
 
     impl<'a, T: PointerOps> Drop for PointerGuard<'a, T> {
         #[inline]
+        #[flux::trusted]
         fn drop(&mut self) {
             // Prevent shared pointers from being released by converting them
             // back into the raw pointers

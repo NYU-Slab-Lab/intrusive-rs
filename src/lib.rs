@@ -283,6 +283,9 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+extern crate flux_core;
+
+mod flux_specs;
 mod unsafe_ref;
 #[macro_use]
 mod adapter;
