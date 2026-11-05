@@ -1318,7 +1318,14 @@ where
     /// `ptr` must be a pointer to an object that is part of this list.
     /// `prev` must be a pointer to an object that is the previous object in this list (null for the head)
     #[inline]
-    #[flux::spec(fn (&Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value, prev: *const <A::PointerOps as PointerOps>::Value) -> Cursor<A>)]
+    #[flux::spec(
+        fn (
+            &Self,
+            ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value,
+            prev: *const <A::PointerOps as PointerOps>::Value
+        )
+        -> Cursor<A>
+    )]
     pub unsafe fn cursor_from_ptr_and_prev(
         &self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1347,7 +1354,14 @@ where
     /// `ptr` must be a pointer to an object that is part of this list.
     /// `prev` must be a pointer to an object that is the previous object in this list (null for the head)
     #[inline]
-    #[flux::spec(fn (&mut Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value, prev: *const <A::PointerOps as PointerOps>::Value) -> CursorMut<A>)]
+    #[flux::spec(
+        fn (
+            &mut Self,
+            ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value,
+            prev: *const <A::PointerOps as PointerOps>::Value
+        )
+        -> CursorMut<A>
+    )]
     pub unsafe fn cursor_mut_from_ptr_and_prev(
         &mut self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1376,7 +1390,14 @@ where
     /// `ptr` must be a pointer to an object that is part of this list.
     /// `prev` must be a pointer to an object that is the previous object in this list (null for the head)
     #[inline]
-    #[flux::spec(fn (Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value, prev: *const <A::PointerOps as PointerOps>::Value) -> CursorOwning<A>)]
+    #[flux::spec(
+        fn (
+            Self,
+            ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value,
+            prev: *const <A::PointerOps as PointerOps>::Value
+        )
+        -> CursorOwning<A>
+    )]
     pub unsafe fn cursor_owning_from_ptr_and_prev(
         self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1405,7 +1426,14 @@ where
     /// `ptr` must be a pointer to an object that is part of this list.
     /// `next` must be a pointer to an object that is the next object in this list (null for the tail)
     #[inline]
-    #[flux::spec(fn (&Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value, next: *const <A::PointerOps as PointerOps>::Value) -> Cursor<A>)]
+    #[flux::spec(
+        fn (
+            &Self,
+            ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value,
+            next: *const <A::PointerOps as PointerOps>::Value
+        )
+        -> Cursor<A>
+    )]
     pub unsafe fn cursor_from_ptr_and_next(
         &self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1434,7 +1462,14 @@ where
     /// `ptr` must be a pointer to an object that is part of this list.
     /// `next` must be a pointer to an object that is the next object in this list (null for the tail)
     #[inline]
-    #[flux::spec(fn (&mut Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value, next: *const <A::PointerOps as PointerOps>::Value) -> CursorMut<A>)]
+    #[flux::spec(
+        fn (
+            &mut Self,
+            ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value,
+            next: *const <A::PointerOps as PointerOps>::Value
+        )
+        -> CursorMut<A>
+    )]
     pub unsafe fn cursor_mut_from_ptr_and_next(
         &mut self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1463,7 +1498,14 @@ where
     /// `ptr` must be a pointer to an object that is part of this list.
     /// `next` must be a pointer to an object that is the next object in this list (null for the tail)
     #[inline]
-    #[flux::spec(fn (Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value, next: *const <A::PointerOps as PointerOps>::Value) -> CursorOwning<A>)]
+    #[flux::spec(
+        fn (
+            Self,
+            ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value,
+            next: *const <A::PointerOps as PointerOps>::Value
+        )
+        -> CursorOwning<A>
+    )]
     pub unsafe fn cursor_owning_from_ptr_and_next(
         self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1740,7 +1782,11 @@ where
 
     #[inline]
     #[flux::trusted_impl]
-    #[flux::spec(fn (self: &strg Self) -> Option<&<A::PointerOps as PointerOps>::Value> ensures self: Self)]
+    #[flux::spec(
+        fn (self: &strg Self)
+        -> Option<&<A::PointerOps as PointerOps>::Value>
+        ensures self: Self
+    )]
     fn next(&mut self) -> Option<&'a <A::PointerOps as PointerOps>::Value> {
         let head = self.head?;
 
@@ -1813,7 +1859,11 @@ where
 
     #[inline]
     #[flux::trusted_impl]
-    #[flux::spec(fn (self: &strg Self) -> Option<<A::PointerOps as PointerOps>::Pointer> ensures self: Self)]
+    #[flux::spec(
+        fn (self: &strg Self)
+        -> Option<<A::PointerOps as PointerOps>::Pointer>
+        ensures self: Self
+    )]
     fn next(&mut self) -> Option<<A::PointerOps as PointerOps>::Pointer> {
         self.list.pop_front()
     }

@@ -35,7 +35,11 @@ impl<T: ?Sized> UnsafeRef<T> {
     ///
     /// You must ensure that the `UnsafeRef` guarantees are upheld.
     #[inline]
-    #[flux::spec(fn (val: *const[@p] T) -> UnsafeRef<T>[p.base, p.addr, p.size] requires p.addr != 0)]
+    #[flux::spec(
+        fn (val: *const[@p] T)
+        -> UnsafeRef<T>[p.base, p.addr, p.size]
+        requires p.addr != 0
+    )]
     pub unsafe fn from_raw(val: *const T) -> UnsafeRef<T> {
         UnsafeRef {
             ptr: NonNull::new_unchecked(val as *mut _),

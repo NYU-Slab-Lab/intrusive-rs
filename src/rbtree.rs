@@ -45,6 +45,14 @@ flux_rs::defs! {
     fn model_right<S, P>(s: S) -> Map<P, bool>;
     fn model_parent<S, P>(s: S) -> Map<P, bool>;
     fn model_red<S, P>(s: S) -> Map<P, bool>;
+
+    // The word `set_parent_color` writes for a parentless node: `(0 & !1) | bit`.
+    fn parentless_word(red: bool) -> int { if red { 0 } else { 1 } }
+
+    // Writing this state would make a linked node read as unlinked.
+    fn reads_unlinked(has_parent: bool, red: bool) -> bool {
+        !has_parent && parentless_word(red) == UNLINKED_MARKER
+    }
 }
 
 /// Link operations for `RBTree`.
@@ -62,7 +70,10 @@ pub unsafe trait RBTreeOps: link_ops::LinkOps {
     /// # Safety
     /// An implementation of `left` must not panic.
     #[flux::trusted_impl]
-    #[flux::spec(fn (&Self[@s], ptr: Self::LinkPtr[@p]) -> Option<Self::LinkPtr>[map_select(<Self as RBTreeOps>::left_some(s), p)])]
+    #[flux::spec(
+        fn (&Self[@s], ptr: Self::LinkPtr[@p])
+        -> Option<Self::LinkPtr>[map_select(<Self as RBTreeOps>::left_some(s), p)]
+    )]
     unsafe fn left(&self, ptr: Self::LinkPtr) -> Option<Self::LinkPtr>;
 
     /// Returns the right child of `ptr`.
@@ -70,7 +81,10 @@ pub unsafe trait RBTreeOps: link_ops::LinkOps {
     /// # Safety
     /// An implementation of `right` must not panic.
     #[flux::trusted_impl]
-    #[flux::spec(fn (&Self[@s], ptr: Self::LinkPtr[@p]) -> Option<Self::LinkPtr>[map_select(<Self as RBTreeOps>::right_some(s), p)])]
+    #[flux::spec(
+        fn (&Self[@s], ptr: Self::LinkPtr[@p])
+        -> Option<Self::LinkPtr>[map_select(<Self as RBTreeOps>::right_some(s), p)]
+    )]
     unsafe fn right(&self, ptr: Self::LinkPtr) -> Option<Self::LinkPtr>;
 
     /// Returns the parent of `ptr`.
@@ -78,7 +92,10 @@ pub unsafe trait RBTreeOps: link_ops::LinkOps {
     /// # Safety
     /// An implementation of `parent` must not panic.
     #[flux::trusted_impl]
-    #[flux::spec(fn (&Self[@s], ptr: Self::LinkPtr[@p]) -> Option<Self::LinkPtr>[map_select(<Self as RBTreeOps>::parent_some(s), p)])]
+    #[flux::spec(
+        fn (&Self[@s], ptr: Self::LinkPtr[@p])
+        -> Option<Self::LinkPtr>[map_select(<Self as RBTreeOps>::parent_some(s), p)]
+    )]
     unsafe fn parent(&self, ptr: Self::LinkPtr) -> Option<Self::LinkPtr>;
 
     /// Returns the color of `ptr`.
@@ -92,7 +109,16 @@ pub unsafe trait RBTreeOps: link_ops::LinkOps {
     /// # Safety
     /// An implementation of `set_left` must not panic.
     #[flux::trusted_impl]
-    #[flux::spec(fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], left: Option<Self::LinkPtr>[@b]) ensures self: Self{s2: <Self as RBTreeOps>::left_some(s2) == map_store(<Self as RBTreeOps>::left_some(s), p, b) && <Self as RBTreeOps>::right_some(s2) == <Self as RBTreeOps>::right_some(s) && <Self as RBTreeOps>::parent_some(s2) == <Self as RBTreeOps>::parent_some(s) && <Self as RBTreeOps>::red(s2) == <Self as RBTreeOps>::red(s)})]
+    #[flux::spec(
+        fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], left: Option<Self::LinkPtr>[@b])
+        ensures self: Self{s2:
+            <Self as RBTreeOps>::left_some(s2)
+                == map_store(<Self as RBTreeOps>::left_some(s), p, b) &&
+            <Self as RBTreeOps>::right_some(s2) == <Self as RBTreeOps>::right_some(s) &&
+            <Self as RBTreeOps>::parent_some(s2) == <Self as RBTreeOps>::parent_some(s) &&
+            <Self as RBTreeOps>::red(s2) == <Self as RBTreeOps>::red(s)
+        }
+    )]
     unsafe fn set_left(&mut self, ptr: Self::LinkPtr, left: Option<Self::LinkPtr>);
 
     /// Sets the right child of `ptr`.
@@ -100,7 +126,16 @@ pub unsafe trait RBTreeOps: link_ops::LinkOps {
     /// # Safety
     /// An implementation of `set_right` must not panic.
     #[flux::trusted_impl]
-    #[flux::spec(fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], right: Option<Self::LinkPtr>[@b]) ensures self: Self{s2: <Self as RBTreeOps>::right_some(s2) == map_store(<Self as RBTreeOps>::right_some(s), p, b) && <Self as RBTreeOps>::left_some(s2) == <Self as RBTreeOps>::left_some(s) && <Self as RBTreeOps>::parent_some(s2) == <Self as RBTreeOps>::parent_some(s) && <Self as RBTreeOps>::red(s2) == <Self as RBTreeOps>::red(s)})]
+    #[flux::spec(
+        fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], right: Option<Self::LinkPtr>[@b])
+        ensures self: Self{s2:
+            <Self as RBTreeOps>::right_some(s2)
+                == map_store(<Self as RBTreeOps>::right_some(s), p, b) &&
+            <Self as RBTreeOps>::left_some(s2) == <Self as RBTreeOps>::left_some(s) &&
+            <Self as RBTreeOps>::parent_some(s2) == <Self as RBTreeOps>::parent_some(s) &&
+            <Self as RBTreeOps>::red(s2) == <Self as RBTreeOps>::red(s)
+        }
+    )]
     unsafe fn set_right(&mut self, ptr: Self::LinkPtr, right: Option<Self::LinkPtr>);
 
     /// Sets the parent of `ptr`.
@@ -108,9 +143,19 @@ pub unsafe trait RBTreeOps: link_ops::LinkOps {
     /// # Safety
     /// An implementation of `set_parent` must not panic.
     #[flux::trusted_impl]
-    // `parent_color` packs to `UNLINKED_MARKER` (0) for a parentless red node, so a
-    // linked node must never be in that state.
-    #[flux::spec(fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], parent: Option<Self::LinkPtr>[@b]) requires b || !map_select(<Self as RBTreeOps>::red(s), p) ensures self: Self{s2: <Self as RBTreeOps>::parent_some(s2) == map_store(<Self as RBTreeOps>::parent_some(s), p, b) && <Self as RBTreeOps>::left_some(s2) == <Self as RBTreeOps>::left_some(s) && <Self as RBTreeOps>::right_some(s2) == <Self as RBTreeOps>::right_some(s) && <Self as RBTreeOps>::red(s2) == <Self as RBTreeOps>::red(s)})]
+    // A linked node must never be in a state whose packed `parent_color` equals
+    // `UNLINKED_MARKER`.
+    #[flux::spec(
+        fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], parent: Option<Self::LinkPtr>[@b])
+        requires !reads_unlinked(b, map_select(<Self as RBTreeOps>::red(s), p))
+        ensures self: Self{s2:
+            <Self as RBTreeOps>::parent_some(s2)
+                == map_store(<Self as RBTreeOps>::parent_some(s), p, b) &&
+            <Self as RBTreeOps>::left_some(s2) == <Self as RBTreeOps>::left_some(s) &&
+            <Self as RBTreeOps>::right_some(s2) == <Self as RBTreeOps>::right_some(s) &&
+            <Self as RBTreeOps>::red(s2) == <Self as RBTreeOps>::red(s)
+        }
+    )]
     unsafe fn set_parent(&mut self, ptr: Self::LinkPtr, parent: Option<Self::LinkPtr>);
 
     /// Sets the color of `ptr`.
@@ -119,7 +164,16 @@ pub unsafe trait RBTreeOps: link_ops::LinkOps {
     /// An implementation of `set_color` must not panic.
     #[flux::trusted_impl]
     // See `set_parent`.
-    #[flux::spec(fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], color: Color[@c]) requires map_select(<Self as RBTreeOps>::parent_some(s), p) || !c ensures self: Self{s2: <Self as RBTreeOps>::left_some(s2) == <Self as RBTreeOps>::left_some(s) && <Self as RBTreeOps>::right_some(s2) == <Self as RBTreeOps>::right_some(s) && <Self as RBTreeOps>::parent_some(s2) == <Self as RBTreeOps>::parent_some(s) && <Self as RBTreeOps>::red(s2) == map_store(<Self as RBTreeOps>::red(s), p, c)})]
+    #[flux::spec(
+        fn (self: &strg Self[@s], ptr: Self::LinkPtr[@p], color: Color[@c])
+        requires !reads_unlinked(map_select(<Self as RBTreeOps>::parent_some(s), p), c)
+        ensures self: Self{s2:
+            <Self as RBTreeOps>::left_some(s2) == <Self as RBTreeOps>::left_some(s) &&
+            <Self as RBTreeOps>::right_some(s2) == <Self as RBTreeOps>::right_some(s) &&
+            <Self as RBTreeOps>::parent_some(s2) == <Self as RBTreeOps>::parent_some(s) &&
+            <Self as RBTreeOps>::red(s2) == map_store(<Self as RBTreeOps>::red(s), p, c)
+        }
+    )]
     unsafe fn set_color(&mut self, ptr: Self::LinkPtr, color: Color);
 }
 
@@ -136,9 +190,10 @@ pub struct Link {
     parent_color: Cell<usize>,
 }
 
-// Use a special value to indicate an unlinked node. This value represents a
-// red root node, which is impossible in a valid red-black tree.
-const UNLINKED_MARKER: usize = 0;
+// Use a special value to indicate an unlinked node. As a packed `parent_color`
+// this would mean a parent at `usize::MAX - 1`, which is too close to the end of
+// the address space to hold a `Link`, so a linked node can never have this value.
+const UNLINKED_MARKER: usize = usize::MAX;
 
 impl Link {
     /// Creates a new `Link`.
@@ -714,7 +769,10 @@ unsafe fn last_child<T: RBTreeOps>(link_ops: &T, ptr: T::LinkPtr) -> T::LinkPtr 
 }
 
 #[inline]
-#[flux::spec(fn (link_ops: &T[@s], ptr: T::LinkPtr[@p]) -> Option<T::LinkPtr>{v: map_select(<T as RBTreeOps>::right_some(s), p) => v})]
+#[flux::spec(
+    fn (link_ops: &T[@s], ptr: T::LinkPtr[@p])
+    -> Option<T::LinkPtr>{v: map_select(<T as RBTreeOps>::right_some(s), p) => v}
+)]
 unsafe fn next<T: RBTreeOps>(link_ops: &T, ptr: T::LinkPtr) -> Option<T::LinkPtr> {
     if let Some(right) = link_ops.right(ptr) {
         Some(first_child(link_ops, right))
@@ -735,7 +793,10 @@ unsafe fn next<T: RBTreeOps>(link_ops: &T, ptr: T::LinkPtr) -> Option<T::LinkPtr
 }
 
 #[inline]
-#[flux::spec(fn (link_ops: &T[@s], ptr: T::LinkPtr[@p]) -> Option<T::LinkPtr>{v: map_select(<T as RBTreeOps>::left_some(s), p) => v})]
+#[flux::spec(
+    fn (link_ops: &T[@s], ptr: T::LinkPtr[@p])
+    -> Option<T::LinkPtr>{v: map_select(<T as RBTreeOps>::left_some(s), p) => v}
+)]
 unsafe fn prev<T: RBTreeOps>(link_ops: &T, ptr: T::LinkPtr) -> Option<T::LinkPtr> {
     if let Some(left) = link_ops.left(ptr) {
         Some(last_child(link_ops, left))
@@ -756,7 +817,6 @@ unsafe fn prev<T: RBTreeOps>(link_ops: &T, ptr: T::LinkPtr) -> Option<T::LinkPtr
 }
 
 #[inline]
-#[flux::trusted(reason = "`new` is black from `acquire_link`, and a parentless `ptr` is a black root")]
 unsafe fn replace_with<T: RBTreeOps>(
     link_ops: &mut T,
     ptr: T::LinkPtr,
@@ -786,7 +846,11 @@ unsafe fn replace_with<T: RBTreeOps>(
 }
 
 #[inline]
-#[flux::spec(fn (link_ops: &strg T, ptr: T::LinkPtr, new: T::LinkPtr, root: &strg Option<T::LinkPtr>[@b]) ensures link_ops: T, root: Option<T::LinkPtr>{v: b => v})]
+#[flux::spec(
+    fn (link_ops: &strg T, ptr: T::LinkPtr, new: T::LinkPtr, root: &strg Option<T::LinkPtr>[@b])
+    ensures link_ops: T,
+            root: Option<T::LinkPtr>{v: b => v}
+)]
 unsafe fn insert_left<T: RBTreeOps>(
     link_ops: &mut T,
     ptr: T::LinkPtr,
@@ -802,7 +866,11 @@ unsafe fn insert_left<T: RBTreeOps>(
 }
 
 #[inline]
-#[flux::spec(fn (link_ops: &strg T, ptr: T::LinkPtr, new: T::LinkPtr, root: &strg Option<T::LinkPtr>[@b]) ensures link_ops: T, root: Option<T::LinkPtr>{v: b => v})]
+#[flux::spec(
+    fn (link_ops: &strg T, ptr: T::LinkPtr, new: T::LinkPtr, root: &strg Option<T::LinkPtr>[@b])
+    ensures link_ops: T,
+            root: Option<T::LinkPtr>{v: b => v}
+)]
 unsafe fn insert_right<T: RBTreeOps>(
     link_ops: &mut T,
     ptr: T::LinkPtr,
@@ -817,8 +885,12 @@ unsafe fn insert_right<T: RBTreeOps>(
     post_insert(link_ops, new, root);
 }
 
-#[flux::trusted(reason = "callers make the child black before rotating at the root")]
-#[flux::spec(fn (link_ops: &strg T[@s], ptr: T::LinkPtr[@p], root: &strg Option<T::LinkPtr>[@b]) requires map_select(<T as RBTreeOps>::right_some(s), p) ensures link_ops: T{s2: map_select(<T as RBTreeOps>::parent_some(s2), p)}, root: Option<T::LinkPtr>{v: b => v})]
+#[flux::spec(
+    fn (link_ops: &strg T[@s], ptr: T::LinkPtr[@p], root: &strg Option<T::LinkPtr>[@b])
+    requires map_select(<T as RBTreeOps>::right_some(s), p)
+    ensures link_ops: T{s2: map_select(<T as RBTreeOps>::parent_some(s2), p)},
+            root: Option<T::LinkPtr>{v: b => v}
+)]
 unsafe fn rotate_left<T: RBTreeOps>(
     link_ops: &mut T,
     ptr: T::LinkPtr,
@@ -843,8 +915,12 @@ unsafe fn rotate_left<T: RBTreeOps>(
     link_ops.set_parent(ptr, Some(y));
 }
 
-#[flux::trusted(reason = "callers make the child black before rotating at the root")]
-#[flux::spec(fn (link_ops: &strg T[@s], ptr: T::LinkPtr[@p], root: &strg Option<T::LinkPtr>[@b]) requires map_select(<T as RBTreeOps>::left_some(s), p) ensures link_ops: T{s2: map_select(<T as RBTreeOps>::parent_some(s2), p)}, root: Option<T::LinkPtr>{v: b => v})]
+#[flux::spec(
+    fn (link_ops: &strg T[@s], ptr: T::LinkPtr[@p], root: &strg Option<T::LinkPtr>[@b])
+    requires map_select(<T as RBTreeOps>::left_some(s), p)
+    ensures link_ops: T{s2: map_select(<T as RBTreeOps>::parent_some(s2), p)},
+            root: Option<T::LinkPtr>{v: b => v}
+)]
 unsafe fn rotate_right<T: RBTreeOps>(
     link_ops: &mut T,
     ptr: T::LinkPtr,
@@ -871,7 +947,10 @@ unsafe fn rotate_right<T: RBTreeOps>(
 
 // This code is based on the red-black tree implementation in libc++
 #[flux::trusted]
-#[flux::spec(fn (link_ops: &mut T, ptr: T::LinkPtr, root: &strg Option<T::LinkPtr>[@b]) ensures root: Option<T::LinkPtr>{v: b => v})]
+#[flux::spec(
+    fn (link_ops: &mut T, ptr: T::LinkPtr, root: &strg Option<T::LinkPtr>[@b])
+    ensures root: Option<T::LinkPtr>{v: b => v}
+)]
 unsafe fn post_insert<T: RBTreeOps>(
     link_ops: &mut T,
     ptr: T::LinkPtr,
@@ -943,7 +1022,10 @@ unsafe fn post_insert<T: RBTreeOps>(
 
 // This code is based on the red-black tree implementation in libc++
 #[flux::trusted]
-#[flux::spec(fn (link_ops: &mut T, ptr: T::LinkPtr, root: &strg Option<T::LinkPtr>) ensures root: Option<T::LinkPtr>)]
+#[flux::spec(
+    fn (link_ops: &mut T, ptr: T::LinkPtr, root: &strg Option<T::LinkPtr>)
+    ensures root: Option<T::LinkPtr>
+)]
 unsafe fn remove<T: RBTreeOps>(link_ops: &mut T, ptr: T::LinkPtr, root: &mut Option<T::LinkPtr>) {
     let y = if link_ops.left(ptr).is_none() || link_ops.right(ptr).is_none() {
         ptr
@@ -1706,7 +1788,10 @@ where
     ///
     /// `ptr` must be a pointer to an object that is part of this tree.
     #[inline]
-    #[flux::spec(fn (&Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value) -> Cursor<A>)]
+    #[flux::spec(
+        fn (&Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value)
+        -> Cursor<A>
+    )]
     pub unsafe fn cursor_from_ptr(
         &self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1723,7 +1808,10 @@ where
     ///
     /// `ptr` must be a pointer to an object that is part of this tree.
     #[inline]
-    #[flux::spec(fn (&mut Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value) -> CursorMut<A>)]
+    #[flux::spec(
+        fn (&mut Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value)
+        -> CursorMut<A>
+    )]
     pub unsafe fn cursor_mut_from_ptr(
         &mut self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1740,7 +1828,10 @@ where
     ///
     /// `ptr` must be a pointer to an object that is part of this tree.
     #[inline]
-    #[flux::spec(fn (Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value) -> CursorOwning<A>)]
+    #[flux::spec(
+        fn (Self, ptr: *const{p: p.addr != 0} <A::PointerOps as PointerOps>::Value)
+        -> CursorOwning<A>
+    )]
     pub unsafe fn cursor_owning_from_ptr(
         self,
         ptr: *const <A::PointerOps as PointerOps>::Value,
@@ -1806,7 +1897,6 @@ where
     }
 
     #[inline]
-    #[flux::trusted(reason = "`node` is black from `acquire_link`")]
     unsafe fn insert_root(&mut self, node: <A::LinkOps as link_ops::LinkOps>::LinkPtr) {
         self.adapter.link_ops_mut().set_parent(node, None);
         self.adapter.link_ops_mut().set_color(node, Color::Black);
@@ -2485,7 +2575,11 @@ where
 
     #[inline]
     #[flux::trusted_impl]
-    #[flux::spec(fn (self: &strg Self) -> Option<&<A::PointerOps as PointerOps>::Value> ensures self: Self)]
+    #[flux::spec(
+        fn (self: &strg Self)
+        -> Option<&<A::PointerOps as PointerOps>::Value>
+        ensures self: Self
+    )]
     fn next(&mut self) -> Option<&'a <A::PointerOps as PointerOps>::Value> {
         let head = self.head?;
 
@@ -2550,7 +2644,11 @@ where
 
     #[inline]
     #[flux::trusted_impl]
-    #[flux::spec(fn (self: &strg Self) -> Option<<A::PointerOps as PointerOps>::Pointer> ensures self: Self)]
+    #[flux::spec(
+        fn (self: &strg Self)
+        -> Option<<A::PointerOps as PointerOps>::Pointer>
+        ensures self: Self
+    )]
     fn next(&mut self) -> Option<<A::PointerOps as PointerOps>::Pointer> {
         use link_ops::LinkOps;
 

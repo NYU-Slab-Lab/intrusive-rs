@@ -109,13 +109,20 @@ unsafe impl<T: ?Sized> PointerOps for DefaultPointerOps<UnsafeRef<T>> {
     type Pointer = UnsafeRef<T>;
 
     #[inline]
-    #[flux::spec(fn (&Self, raw: *const[@p] T) -> UnsafeRef<T>[p.base, p.addr, p.size] requires p.addr != 0)]
+    #[flux::spec(
+        fn (&Self, raw: *const[@p] T)
+        -> UnsafeRef<T>[p.base, p.addr, p.size]
+        requires p.addr != 0
+    )]
     unsafe fn from_raw(&self, raw: *const T) -> UnsafeRef<T> {
         UnsafeRef::from_raw(raw as *mut T)
     }
 
     #[inline]
-    #[flux::spec(fn (&Self, ptr: UnsafeRef<T>[@b, @a, @s]) -> *const{p: p.base == b && p.addr == a && p.size == s && p.addr != 0} T)]
+    #[flux::spec(
+        fn (&Self, ptr: UnsafeRef<T>[@b, @a, @s])
+        -> *const{p: p.base == b && p.addr == a && p.size == s && p.addr != 0} T
+    )]
     fn into_raw(&self, ptr: UnsafeRef<T>) -> *const T {
         UnsafeRef::into_raw(ptr) as *const T
     }
